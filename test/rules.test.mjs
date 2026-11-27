@@ -161,10 +161,11 @@ test("exportData / importData: 書き出したものを読み込むと元に戻�
     { id: "v", name: "縦型", left: 1180, top: 25, width: 560, height: 1050, urls: [LIVE], keywords: ["#縦型配信"] },
     { id: "h", name: "横型", left: 0, top: 25, width: 1440, height: 860, urls: [], keywords: [], isDefault: true },
   ];
-  const data = JSON.parse(JSON.stringify(exportData({ enabled: false, presets })));
-  assert.equal(data.format, "window-presets");
+  const data = JSON.parse(JSON.stringify(exportData({ enabled: false, notify: false, presets })));
+  assert.equal(data.format, "yt-window-presets");
   const back = importData(data);
   assert.equal(back.enabled, false);
+  assert.equal(back.notify, false);
   assert.deepEqual(back.presets.map((p) => p.id), ["v", "h"]);
   assert.deepEqual(back.presets[0].urls, [LIVE]);
   assert.equal(back.presets[1].isDefault, true);
@@ -173,15 +174,16 @@ test("exportData / importData: 書き出したものを読み込むと元に戻�
 
 test("importData: 形式が違う・数値でないものは読み込まない、値は整える", () => {
   assert.throws(() => importData({ sets: [] }), /Window Presets/);
-  assert.throws(() => importData({ format: "window-presets", presets: [{ name: "x", left: "a", top: 0, width: 1, height: 1 }] }), /数値/);
+  assert.throws(() => importData({ format: "yt-window-presets", presets: [{ name: "x", left: "a", top: 0, width: 1, height: 1 }] }), /数値/);
   const r = importData({
-    format: "window-presets",
+    format: "yt-window-presets",
     presets: [
       { id: "a", name: " a ", left: 1.4, top: "2", width: 10, height: 10, urls: [" x.com/ ", "*", "x.com/"], keywords: ["#k", "#k", " "], isDefault: true },
       { id: "a", name: "", left: 0, top: 0, width: 800, height: 600, isDefault: true },
     ],
   });
   assert.equal(r.enabled, true);
+  assert.equal(r.notify, true);
   const [a, b] = r.presets;
   assert.equal(a.name, "a");
   assert.deepEqual([a.left, a.top, a.width, a.height], [1, 2, 200, 150]);

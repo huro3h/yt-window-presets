@@ -2,7 +2,7 @@ const DB_NAME = "export-file";
 const STORE = "handles";
 const DIR_KEY = "exportDir";
 const NAME_KEY = "fileName";
-const BASE_NAME = "window-presets";
+const BASE_NAME = "yt-window-presets";
 
 export const canPickFolder = typeof window.showDirectoryPicker === "function";
 

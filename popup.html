@@ -6,7 +6,7 @@
   </head>
   <body>
     <div class="bar">
-      <span class="title">Window Presets <span class="version" id="version"></span></span>
+      <span class="title">YouTube Window Presets <span class="version" id="version"></span></span>
       <div class="bar-actions">
         <label class="switch" title="自動で合わせる">
           <input type="checkbox" id="enabled" />
@@ -42,6 +42,16 @@
       <div class="row">
         <input type="text" id="name" placeholder="名前(例: 縦型配信)" />
         <button id="add" class="primary">登録</button>
+      </div>
+    </section>
+
+    <section>
+      <div class="row">
+        <span>適用したときに通知を出す</span>
+        <label class="switch" title="YouTube の配信画面に「設定を適用しました」と出す">
+          <input type="checkbox" id="notify" />
+          <span class="slider"></span>
+        </label>
       </div>
     </section>
 

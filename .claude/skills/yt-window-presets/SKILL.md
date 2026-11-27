@@ -1,13 +1,20 @@
 ---
-name: window-presets
-description: Window Presets(登録した URL を開いたらウィンドウの位置とサイズを自動で合わせる Chrome 拡張)を改修・デバッグするときに使う。適用のタイミングの設計、URL パターンの仕様、YouTube の配信判定(プレイヤーから読む)、E2E で踏んだ落とし穴を記録している。
+name: yt-window-presets
+description: YouTube Window Presets(登録した URL を開いたらウィンドウの位置とサイズを自動で合わせる Chrome 拡張)を改修・デバッグするときに使う。適用のタイミングの設計、URL パターンの仕様、YouTube の配信判定(プレイヤーから読む)、E2E で踏んだ落とし穴を記録している。
 ---
 
-# Window Presets 開発メモ
+# YouTube Window Presets 開発メモ
+
+## 名前と色
+
+YouTube の配信に特化しているので、表示名は `YouTube Window Presets`、リポジトリは `yt-window-presets`(旧 `window-presets`)。
+色は YouTube Live Helper に合わせた赤系: アイコンの線 `#E0234C`、ポップアップ・設定画面の `--accent` はライト `#e0234c` / ダーク `#ff3d6b`。
+
+エクスポートの形式名も `format: "yt-window-presets"` に変えた。改名前(`window-presets`)に書き出したファイルは読み込めない(後方互換は不要とした)。
 
 ## コードにコメントを書かない
 
-ユーザーの指定(2026-11-27)で、JS・CSS・HTML・テストのコメントはすべて削除した。設計の理由やハマりどころは
+JS・CSS・HTML・テストのコメントはすべて削除した。設計の理由やハマりどころは
 コードに書かず、このスキルに書く。改修でもコメントを足さない。
 
 ## ファイル構成
@@ -16,16 +23,16 @@ description: Window Presets(登録した URL を開いたらウィンドウの�
 | --- | --- |
 | `background.js` | service worker。タブの遷移・切り替えを見て、当たったらウィンドウの位置とサイズを変える |
 | `yt-main.js` | YouTube のページの MAIN world。プレイヤーから「配信中か・タイトル」を読み、CustomEvent で `yt-bridge.js` へ |
-| `yt-bridge.js` | ISOLATED world。`yt-main.js` の報告を `chrome.runtime.sendMessage` で background へ渡す |
+| `yt-bridge.js` | ISOLATED world。`yt-main.js` の報告を `chrome.runtime.sendMessage` で background へ渡す。適用したときの通知も出す |
 | `rules.js` | 設定のデフォルト、URL パターンの判定、表示用の整形。chrome API に依存しない(Node から単体テストする) |
-| `popup.*` | 今のウィンドウの登録、今のタブの URL の紐づけ、適用・上書き。見出しは小さいグレーの名前 + バージョン、右上に ON/OFF と設定画面への歯車(Bookmark Set Opener に合わせた。ユーザー指定) |
-| `options.*` | 名前・位置とサイズ・URL・キーワードの編集と削除、カードのドラッグでの並べ替え(= 優先度)。説明文は置かない(ユーザー指定)。削除はゴミ箱アイコンの枠付きボタンで、ホバーで赤く塗る(Bookmark Set Opener と同じ)。`popup.css` を `@import` しているので、ポップアップ専用の見出しは `.bar` / `.gear-btn` と名前を分けている。`options.css` は `popup.css` を `@import` している |
-| `export-file.js` | エクスポート先(選んだフォルダ + ファイル名)への上書き。Bookmark Set Opener のものをそのまま持ってきた(ファイル名の初期値だけ `window-presets-<ブラウザ>.json`) |
-| `icons/icon.svg` | アイコンの原本(タイトルバー付きの窓に斜めの矢印。ユーザーが6案から選んだ。縦長専用に見える案は、横型への振り分けにも使うので外した)。PNG はここから `rsvg-convert` で書き出す |
+| `popup.*` | 今のウィンドウの登録、今のタブの URL の紐づけ、適用・上書き。見出しは小さいグレーの名前 + バージョン、右上に ON/OFF と設定画面への歯車(Bookmark Set Opener に合わせた) |
+| `options.*` | 名前・位置とサイズ・URL・キーワードの編集と削除、カードのドラッグでの並べ替え(= 優先度)。説明文は置かない。削除はゴミ箱アイコンの枠付きボタンで、ホバーで赤く塗る(Bookmark Set Opener と同じ)。`popup.css` を `@import` しているので、ポップアップ専用の見出しは `.bar` / `.gear-btn` と名前を分けている。`options.css` は `popup.css` を `@import` している |
+| `export-file.js` | エクスポート先(選んだフォルダ + ファイル名)への上書き。Bookmark Set Opener のものをそのまま持ってきた(ファイル名の初期値だけ `yt-window-presets-<ブラウザ>.json`) |
+| `icons/icon.svg` | アイコンの原本(タイトルバー付きの窓に斜めの矢印。縦長専用に見える案は、横型への振り分けにも使うので外した)。PNG はここから `rsvg-convert` で書き出す |
 
 ## ストレージ
 
-- `chrome.storage.sync`: `enabled`(既定 true)、`presets: [{ id, name, left, top, width, height, urls: [], keywords: [], isDefault? }]`。**配列の順が優先度**(先頭ほど優先)。`isDefault` は多くても1つ
+- `chrome.storage.sync`: `enabled`(既定 true)、`notify`(適用したときの通知。既定 true)、`presets: [{ id, name, left, top, width, height, urls: [], keywords: [], isDefault? }]`。**配列の順が優先度**(先頭ほど優先)。`isDefault` は多くても1つ
 - `chrome.storage.session`: `applied: { [windowId]: presetId }` — ウィンドウごとに最後に当てたプリセット
 - `chrome.storage.session`: `ytReports: { [tabId]: { url, videoId, isLive, title } }` — YouTube のページからの最新の報告。ポップアップも読む
 
@@ -33,7 +40,7 @@ description: Window Presets(登録した URL を開いたらウィンドウの�
 
 ### 「設定(位置とサイズ)」に URL をぶら下げる
 
-ユーザーの要望。縦型配信・横長など**見せ方ごとに1つの位置とサイズ**があり、そこにチャンネルを足していく使い方なので、
+縦型配信・横長など**見せ方ごとに1つの位置とサイズ**があり、そこにチャンネルを足していく使い方なので、
 URL ごとに位置とサイズを持たせず、プリセット1つに URL を複数紐づける形にした。登録は数値を打たせず、
 今のウィンドウから `chrome.windows.getCurrent()` で読み取る。
 
@@ -79,20 +86,20 @@ YouTube はページを読み込み直さずに遷移する(pushState)が、`cha
 - ポップアップの紐づけ欄の初期値(`suggestPattern`)はハッシュを落とし、`?si=` のような付け足しのクエリも落とす。
   ただし `/watch` など、クエリが本体のパスでは残す
 
-YouTube の `https://www.youtube.com/@<channel>/live` は、配信ページを開いたあとも URL がそのまま残る(2026-11-27 に確認)。
+YouTube の `https://www.youtube.com/@<channel>/live` は、配信ページを開いたあとも URL がそのまま残る。
 ただし、チャンネルページから配信のサムネイルを押して入ると `/watch?v=…` になるので、`/live` のパターンには当たらない。
 これを拾うために、次のタイトルのキーワードを足した。
 
 ## YouTube は配信中のページだけ
 
-ユーザーの要望: **YouTube の配信だけを対象にし、通常の動画・ショートには反応しない。**「配信」は**今配信中**(`isLive`)とした。
+**YouTube の配信だけを対象にし、通常の動画・ショートには反応しない。**「配信」は**今配信中**(`isLive`)とした。
 アーカイブ(配信が終わったもの。`isLiveContent` は true だが `isLive` は false)も対象外。
 
 ### 配信かどうかの読み方
 
 URL(`/watch?v=…`)もタブのタイトルも、通常の動画と配信で区別がつかない。ページの要素の属性も当てにならない
 (`ytd-watch-flexy` の `live-chat-present-and-expanded` はチャット欄の開閉で変わる。ライブバッジは表示の都合で出たり消えたり)。
-**プレイヤー `#movie_player` の `getVideoData()`** が `{ video_id, isLive, title }` を返すので、これを使う(2026-11-27 に実機で確認)。
+**プレイヤー `#movie_player` の `getVideoData()`** が `{ video_id, isLive, title }` を返すので、これを使う(実機で確認)。
 
 - `getVideoData()` はページの JS のメソッドなので **MAIN world**(`content_scripts` の `"world": "MAIN"`)でしか呼べない。
   MAIN world からは `chrome.runtime` を呼べないので、ISOLATED world の `yt-bridge.js` が `CustomEvent` を受けて background へ送る。
@@ -119,7 +126,7 @@ URL(`/watch?v=…`)もタブのタイトルも、通常の動画と配信で区�
 
 ## タイトルのキーワード(`keywords`)
 
-ユーザーの要望で追加(縦型配信のタイトルには `#縦型配信` などが入る)。プリセットごとに `keywords: []` を持つ
+縦型配信を拾うために足した(縦型配信のタイトルには `#縦型配信` などが入る)。プリセットごとに `keywords: []` を持つ
 (これより前に作ったプリセットには無いので、常に `p.keywords || []` で読む)。
 
 - YouTube の配信のタイトルでだけ見る(全ページのタブのタイトルで見ると「縦型」で検索した Google の結果などにも当たる)
@@ -128,13 +135,13 @@ URL(`/watch?v=…`)もタブのタイトルも、通常の動画と配信で区�
 
 ## 優先度(並び順)
 
-想定している使い方(ユーザー指定): **縦型配信は設定1、残りの配信は設定2 に振り分ける。**
+想定している使い方: **縦型配信は設定1、残りの配信は設定2 に振り分ける。**
 設定1 = キーワード `#縦型配信`(+ 縦型のチャンネルの `/live`)、設定2 = 「デフォルトを有効」(URL もキーワードも無し)。
 
 - URL で当たった候補(`urlCandidates`)と、YouTube の配信のタイトルで当たった候補(`titleCandidates`)のうち、
   **`presets` 配列で前にある(= 設定画面で上にある)方**を `pick` で選ぶ。同じ設定に URL とタイトルの両方で当たったら表示は URL
 - 経緯: 最初は「URL 優先・URL どうしは長いパターン」、次に「YouTube ではタイトルを先に見る」決め打ち、次に数値の `priority`
-  (同点なら URL 優先 → 長い方)と変わり、最後にユーザーの希望で**カードのドラッグによる並び順**にした。
+  (同点なら URL 優先 → 長い方)と変わり、最後に**カードのドラッグによる並び順**にした。
   長いパターンを優先する規則はもう無い(チャンネル単位の URL を広い URL に勝たせたいなら上に置く)
 - 数値の `priority` を持つ設定が残っていたら、`migratePriority` が優先度の高い順(同点は元の順)に並べて `priority` を消す。
   `onInstalled` / `onStartup` で一度だけ走る
@@ -142,7 +149,7 @@ URL(`/watch?v=…`)もタブのタイトルも、通常の動画と配信で区�
 
 ### デフォルト(`isDefault`)
 
-ユーザーの要望: 大半の配信は横型なので、縦型以外は URL を書かずに横型へ切り替えたい。カードの「デフォルトを有効」トグル。
+大半の配信は横型なので、縦型以外は URL を書かずに横型へ切り替える。カードの「デフォルトを有効」トグル。
 
 - **YouTube の配信中のページで、URL にもキーワードにも当たらなかったときだけ**使う(`resolve` の最後。`by: "default"`)。
   並び順より弱い(デフォルトの設定が上にあっても、下の設定に当たればそちらが勝つ)。YouTube 以外・通常の動画には使わない
@@ -159,11 +166,28 @@ URL(`/watch?v=…`)もタブのタイトルも、通常の動画と配信で区�
 - `storage.onChanged` の描き直し判定(`shape`)に id の並びが入っているので、別タブで並べ替えても反映される。
   自分の保存は先に `presets` を更新してあるので描き直さない(入力中の欄を壊さない)
 
+## 適用したときの通知(YouTube)
+
+設定を当てたら、配信画面の右上に `設定「<名前>」を適用しました` を 4 秒出し、0.3 秒で消す。
+左上に小さく(10px・グレー)アプリ名 `YouTube Window Presets` を入れている。
+見た目は yt-live-helper のお気に入りの配信へ移る前の通知(`fav-watch.js` の `ylh-fav-toast`)に合わせた
+(黒・1px の文字の影・名前はピンク `#ff8fab`)。背景は yt-live-helper の `.35` では文字が見づらかったので `rgba(15,15,15,.6)` に濃くした。位置は右下でなく右上(`right:12px; top:52px`)。
+上端から 8〜44px にはプレイヤーの「i」ボタン(`.ytp-cards-button`)があり、`top:12px` だと重なったので下げた。
+
+- background が `applyBounds` のあとに `chrome.tabs.sendMessage(tabId, { type: "applied-toast", name })` を送り、
+  `yt-bridge.js`(ISOLATED world)が `#movie_player` の中に出す(全画面でも見える。プレイヤーが無ければ `position:fixed`)。
+  自動の適用とポップアップの「適用」(そのウィンドウのアクティブなタブへ)の両方で出す
+- content script は YouTube にしか入れていないので、YouTube 以外では送っても届かず何も出ない(`catch` で握りつぶす)
+- ポップアップ下部の「適用したときに通知を出す」トグル(`notify`)でオフにできる。オフなら background が送らない。エクスポート・インポートにも入れている
+- `pointer-events:none` なので、通知の上をクリックしてもプレイヤーに届く
+- E2E: Lofi Girl の `/@LofiGirl/live`(24 時間配信)をデフォルトの設定で開き、プレイヤーの右上(右 12px・上 52px)に出て 4.6 秒後に消えること、
+  ポップアップと同じ `apply` メッセージでも出ることを確かめた
+
 ## エクスポート・インポート
 
-ユーザーの要望で Bookmark Set Opener と同じ作りにした(設定画面の右上にボタン、その下にエクスポート先)。
+Bookmark Set Opener と同じ作りにした(設定画面の右上にボタン、その下にエクスポート先)。
 
-- 形式は `rules.js` の `exportData` / `importData`: `{ format: "window-presets", version: 1, enabled, presets: [...] }`
+- 形式は `rules.js` の `exportData` / `importData`: `{ format: "yt-window-presets", version: 1, enabled, notify, presets: [...] }`
 - **インポートは置き換え**(Bookmark Set Opener は id で足し合わせる)。並び順が優先度なので、足し合わせると並びが崩れる。
   `importData` は形式名を確かめ、位置とサイズが数値でない設定があれば全体を拒否する。名前・URL・キーワードは
   設定画面と同じ正規化をかけ、幅と高さは下限に寄せ、重複した id は振り直し、`isDefault` は最初の1つだけ残す

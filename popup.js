@@ -23,6 +23,7 @@ async function save(patch) {
 
 function render() {
   $("enabled").checked = settings.enabled;
+  $("notify").checked = settings.notify;
 
   const r = tab ? resolve(settings.presets, tab.url, report) : { preset: null };
   $("match").textContent = r.preset
@@ -97,6 +98,7 @@ async function init() {
   $("pattern").value = tab ? suggestPattern(tab.url) : "";
 
   $("enabled").addEventListener("change", (e) => save({ enabled: e.target.checked }));
+  $("notify").addEventListener("change", (e) => save({ notify: e.target.checked }));
 
   $("add").addEventListener("click", async () => {
     win = await chrome.windows.getCurrent();

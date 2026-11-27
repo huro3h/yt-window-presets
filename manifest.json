@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "Window Presets",
-  "version": "1.0.0",
+  "name": "YouTube Window Presets",
+  "version": "1.1.0",
   "description": "登録したURLを開いたら、ウィンドウの位置とサイズを登録しておいた値に自動で合わせる",
   "permissions": [
     "tabs",
     "storage"
   ],
   "action": {
-    "default_title": "Window Presets",
+    "default_title": "YouTube Window Presets",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",

@@ -1,5 +1,5 @@
 (() => {
-  const EVENT = "window-presets:report";
+  const EVENT = "yt-window-presets:report";
   let lastKey = "";
   let prevId = null;
   let navAt = 0;

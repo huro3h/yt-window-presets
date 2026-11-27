@@ -36,9 +36,16 @@ async function applyBounds(windowId, preset) {
   });
 }
 
+async function notifyApplied(tabId, preset) {
+  if (tabId == null) return;
+  const { notify } = await chrome.storage.sync.get(DEFAULTS);
+  if (!notify) return;
+  chrome.tabs.sendMessage(tabId, { type: "applied-toast", name: preset.name }).catch(() => {});
+}
+
 let queue = Promise.resolve();
 function enqueue(fn) {
-  queue = queue.then(fn).catch((e) => console.warn("[window-presets]", e));
+  queue = queue.then(fn).catch((e) => console.warn("[yt-window-presets]", e));
   return queue;
 }
 
@@ -76,8 +83,9 @@ async function evaluate(tab) {
   await setApplied(tab.windowId, preset.id);
   try {
     await applyBounds(tab.windowId, preset);
+    notifyApplied(tab.id, preset);
   } catch (e) {
-    console.warn("[window-presets] apply failed", e);
+    console.warn("[yt-window-presets] apply failed", e);
     await setApplied(tab.windowId, null);
   }
 }
@@ -119,6 +127,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     try {
       await setApplied(msg.windowId, preset.id);
       await applyBounds(msg.windowId, preset);
+      const [tab] = await chrome.tabs.query({ active: true, windowId: msg.windowId });
+      notifyApplied(tab?.id, preset);
       sendResponse({ ok: true });
     } catch (e) {
       sendResponse({ ok: false, error: String(e) });

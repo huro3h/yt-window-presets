@@ -1,5 +1,6 @@
 export const DEFAULTS = {
   enabled: true,
+  notify: true,
   presets: [],
 };
 
@@ -169,13 +170,14 @@ function pickResult(candidates) {
   return c ? { ...NONE, preset: c.preset, by: c.by } : NONE;
 }
 
-const FORMAT = "window-presets";
+const FORMAT = "yt-window-presets";
 
-export function exportData({ enabled, presets }) {
+export function exportData({ enabled, notify, presets }) {
   return {
     format: FORMAT,
     version: 1,
     enabled: enabled !== false,
+    notify: notify !== false,
     presets: (presets || []).map((p) => ({
       id: p.id,
       name: p.name,
@@ -192,7 +194,7 @@ export function exportData({ enabled, presets }) {
 
 export function importData(data) {
   if (data?.format !== FORMAT || !Array.isArray(data.presets)) {
-    throw new Error("Window Presets で書き出したファイルではありません");
+    throw new Error("YouTube Window Presets で書き出したファイルではありません");
   }
   const int = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : null);
   const ids = new Set();
@@ -220,5 +222,5 @@ export function importData(data) {
       ...(isDefault ? { isDefault: true } : {}),
     });
   }
-  return { enabled: data.enabled !== false, presets };
+  return { enabled: data.enabled !== false, notify: data.notify !== false, presets };
 }
