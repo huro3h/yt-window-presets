@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "YouTube Window Presets",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "登録したURLを開いたら、ウィンドウの位置とサイズを登録しておいた値に自動で合わせる",
   "permissions": [
     "tabs",

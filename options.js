@@ -57,6 +57,10 @@ function render() {
         update(p.id, { keywords: list });
       });
 
+      const portrait = el.querySelector(".portrait");
+      portrait.checked = !!p.portrait;
+      portrait.addEventListener("change", () => update(p.id, { portrait: portrait.checked }));
+
       const isDefault = el.querySelector(".is-default");
       isDefault.checked = !!p.isDefault;
       isDefault.addEventListener("change", async () => {
@@ -122,7 +126,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "sync" || !changes.presets) return;
   const next = changes.presets.newValue || [];
   const shape = (list) =>
-    list.map((p) => `${p.id}:${p.urls.length}:${(p.keywords || []).length}:${!!p.isDefault}`).join(",");
+    list.map((p) => `${p.id}:${p.urls.length}:${(p.keywords || []).length}:${!!p.isDefault}:${!!p.portrait}`).join(",");
   const changed = shape(next) !== shape(presets);
   presets = next;
   if (changed) render();

@@ -156,9 +156,33 @@ test("resolve: デフォルトはどの設定にも当たらない YouTube の�
   assert.equal(resolve([VERT], WATCH, live(WATCH, "雑談")).preset, null);
 });
 
+const PORT = { id: "p", urls: [], keywords: [], portrait: true };
+const DEF2 = { id: "d", urls: [], keywords: [], isDefault: true };
+const oriented = (orientation, title = "雑談") => ({ ...live(WATCH, title), orientation });
+
+test("resolve: 縦長の配信のトグル", () => {
+  assert.equal(resolve([PORT, DEF2], WATCH, oriented("portrait")).preset.id, "p");
+  assert.equal(resolve([PORT, DEF2], WATCH, oriented("portrait")).by, "portrait");
+  assert.equal(resolve([PORT, DEF2], WATCH, oriented("landscape")).preset.id, "d");
+  assert.equal(resolve([PORT, DEF2], WATCH, oriented("unknown")).preset.id, "d");
+  assert.equal(resolve([DEF2, PORT], WATCH, oriented("portrait")).preset.id, "p");
+  assert.equal(resolve([{ ...PORT, portrait: false }, DEF2], WATCH, oriented("portrait")).preset.id, "d");
+  assert.equal(resolve([HORIZ, PORT], WATCH, oriented("portrait")).preset.id, "h");
+  assert.equal(resolve([VERT, PORT], WATCH, oriented("landscape", "#縦型配信")).preset.id, "v");
+});
+
+test("resolve: 映像の向きが分かるまでは、縦長の設定が勝ち得るときだけ pending", () => {
+  assert.equal(resolve([PORT, DEF2], WATCH, oriented(null)).pending, true);
+  assert.equal(resolve([PORT, DEF2], WATCH, live(WATCH, "雑談")).pending, true);
+  assert.equal(resolve([HORIZ, PORT], WATCH, oriented(null)).preset.id, "h");
+  assert.equal(resolve([VERT, PORT], WATCH, oriented(null, "#縦型配信")).preset.id, "v");
+  assert.equal(resolve([PORT, VERT], WATCH, oriented(null, "#縦型配信")).pending, true);
+  assert.equal(resolve([DEF2], WATCH, oriented(null)).preset.id, "d");
+});
+
 test("exportData / importData: 書き出したものを読み込むと元に戻る", () => {
   const presets = [
-    { id: "v", name: "縦型", left: 1180, top: 25, width: 560, height: 1050, urls: [LIVE], keywords: ["#縦型配信"] },
+    { id: "v", name: "縦型", left: 1180, top: 25, width: 560, height: 1050, urls: [LIVE], keywords: ["#縦型配信"], portrait: true },
     { id: "h", name: "横型", left: 0, top: 25, width: 1440, height: 860, urls: [], keywords: [], isDefault: true },
   ];
   const data = JSON.parse(JSON.stringify(exportData({ enabled: false, notify: false, presets })));
@@ -170,6 +194,8 @@ test("exportData / importData: 書き出したものを読み込むと元に戻�
   assert.deepEqual(back.presets[0].urls, [LIVE]);
   assert.equal(back.presets[1].isDefault, true);
   assert.ok(!("isDefault" in back.presets[0]));
+  assert.equal(back.presets[0].portrait, true);
+  assert.ok(!("portrait" in back.presets[1]));
 });
 
 test("importData: 形式が違う・数値でないものは読み込まない、値は整える", () => {

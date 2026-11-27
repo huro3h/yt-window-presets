@@ -27,11 +27,11 @@ function render() {
 
   const r = tab ? resolve(settings.presets, tab.url, report) : { preset: null };
   $("match").textContent = r.preset
-    ? `${{ title: "タイトル", url: "URL", default: "デフォルト" }[r.by]}「${r.preset.name}」にマッチ`
+    ? `${{ title: "タイトル", url: "URL", portrait: "縦長の映像", default: "デフォルト" }[r.by]}「${r.preset.name}」にマッチ`
     : r.notLive
       ? "YouTube の配信中のページではないので対象外です"
       : r.pending
-        ? "配信かどうかを確認中です"
+        ? "配信かどうか・映像の向きを確認中です"
         : "どの設定にも当たっていません";
 
   const select = $("target");

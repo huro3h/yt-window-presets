@@ -15,7 +15,7 @@ document.addEventListener("yt-window-presets:report", (e) => {
     style.id = `${TOAST_ID}-style`;
     style.textContent = `
 #${TOAST_ID}{position:absolute;right:12px;top:52px;z-index:1000;max-width:min(300px,50%);
-  padding:7px 10px;border-radius:6px;background:rgba(15,15,15,.6);color:#fff;
+  padding:7px 10px;border-radius:6px;background:rgba(15,15,15,.75);color:#fff;
   font:12px/1.4 Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;
   text-shadow:0 1px 1px rgba(0,0,0,.85),0 0 1px rgba(0,0,0,.85);box-shadow:0 2px 8px rgba(0,0,0,.2);
   pointer-events:none;opacity:1;transition:opacity .3s}

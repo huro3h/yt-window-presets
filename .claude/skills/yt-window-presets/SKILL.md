@@ -7,14 +7,14 @@ description: YouTube Window Presets(登録した URL を開いたらウィンド
 
 ## 名前と色
 
-YouTube の配信に特化しているので、表示名は `YouTube Window Presets`、リポジトリは `yt-window-presets`(旧 `window-presets`)。
+YouTube の配信に特化しているので、表示名は `YouTube Window Presets`、リポジトリは `yt-window-presets`。
 色は YouTube Live Helper に合わせた赤系: アイコンの線 `#E0234C`、ポップアップ・設定画面の `--accent` はライト `#e0234c` / ダーク `#ff3d6b`。
 
-エクスポートの形式名も `format: "yt-window-presets"` に変えた。改名前(`window-presets`)に書き出したファイルは読み込めない(後方互換は不要とした)。
+エクスポートの形式名は `format: "yt-window-presets"`。ほかの形式名のファイルは読み込まない(`window-presets` の形式との互換は持たない)。
 
 ## コードにコメントを書かない
 
-JS・CSS・HTML・テストのコメントはすべて削除した。設計の理由やハマりどころは
+JS・CSS・HTML・テストにコメントは書かない。設計の理由やハマりどころは
 コードに書かず、このスキルに書く。改修でもコメントを足さない。
 
 ## ファイル構成
@@ -25,16 +25,16 @@ JS・CSS・HTML・テストのコメントはすべて削除した。設計の�
 | `yt-main.js` | YouTube のページの MAIN world。プレイヤーから「配信中か・タイトル」を読み、CustomEvent で `yt-bridge.js` へ |
 | `yt-bridge.js` | ISOLATED world。`yt-main.js` の報告を `chrome.runtime.sendMessage` で background へ渡す。適用したときの通知も出す |
 | `rules.js` | 設定のデフォルト、URL パターンの判定、表示用の整形。chrome API に依存しない(Node から単体テストする) |
-| `popup.*` | 今のウィンドウの登録、今のタブの URL の紐づけ、適用・上書き。見出しは小さいグレーの名前 + バージョン、右上に ON/OFF と設定画面への歯車(Bookmark Set Opener に合わせた) |
+| `popup.*` | 今のウィンドウの登録、今のタブの URL の紐づけ、適用・上書き。見出しは小さいグレーの名前 + バージョン、右上に ON/OFF と設定画面への歯車(Bookmark Set Opener と同じ配置) |
 | `options.*` | 名前・位置とサイズ・URL・キーワードの編集と削除、カードのドラッグでの並べ替え(= 優先度)。説明文は置かない。削除はゴミ箱アイコンの枠付きボタンで、ホバーで赤く塗る(Bookmark Set Opener と同じ)。`popup.css` を `@import` しているので、ポップアップ専用の見出しは `.bar` / `.gear-btn` と名前を分けている。`options.css` は `popup.css` を `@import` している |
-| `export-file.js` | エクスポート先(選んだフォルダ + ファイル名)への上書き。Bookmark Set Opener のものをそのまま持ってきた(ファイル名の初期値だけ `yt-window-presets-<ブラウザ>.json`) |
-| `icons/icon.svg` | アイコンの原本(タイトルバー付きの窓に斜めの矢印。縦長専用に見える案は、横型への振り分けにも使うので外した)。PNG はここから `rsvg-convert` で書き出す |
+| `export-file.js` | エクスポート先(選んだフォルダ + ファイル名)への上書き。Bookmark Set Opener と同じもの(ファイル名の初期値だけ `yt-window-presets-<ブラウザ>.json`) |
+| `icons/icon.svg` | アイコンの原本(タイトルバー付きの窓に斜めの矢印。横型への振り分けにも使うので、縦長専用に見える図案にはしない)。PNG はここから `rsvg-convert` で書き出す |
 
 ## ストレージ
 
-- `chrome.storage.sync`: `enabled`(既定 true)、`notify`(適用したときの通知。既定 true)、`presets: [{ id, name, left, top, width, height, urls: [], keywords: [], isDefault? }]`。**配列の順が優先度**(先頭ほど優先)。`isDefault` は多くても1つ
+- `chrome.storage.sync`: `enabled`(既定 true)、`notify`(適用したときの通知。既定 true)、`presets: [{ id, name, left, top, width, height, urls: [], keywords: [], isDefault?, portrait? }]`。**配列の順が優先度**(先頭ほど優先)。`isDefault` は多くても1つ
 - `chrome.storage.session`: `applied: { [windowId]: presetId }` — ウィンドウごとに最後に当てたプリセット
-- `chrome.storage.session`: `ytReports: { [tabId]: { url, videoId, isLive, title } }` — YouTube のページからの最新の報告。ポップアップも読む
+- `chrome.storage.session`: `ytReports: { [tabId]: { url, videoId, isLive, title, orientation } }` — YouTube のページからの最新の報告。ポップアップも読む
 
 ## 中心にある設計判断
 
@@ -59,7 +59,7 @@ YouTube はページを読み込み直さずに遷移する(pushState)が、`cha
 ### イベントは1本の列で処理する
 
 `/other` → `/target` のように遷移が続くと、「当たらない」判定の `applied` 消去と、「当たる」判定の読み取りが
-並行して入れ違い、再適用されないことがあった(E2E で再現)。`enqueue()` で直列化している。
+並行すると入れ違い、再適用されなくなる。そのため `enqueue()` で直列化している。
 ポップアップの「適用」メッセージも同じ列に並べる。
 
 ### 最大化・フルスクリーンは先に normal に戻す
@@ -88,7 +88,7 @@ YouTube はページを読み込み直さずに遷移する(pushState)が、`cha
 
 YouTube の `https://www.youtube.com/@<channel>/live` は、配信ページを開いたあとも URL がそのまま残る。
 ただし、チャンネルページから配信のサムネイルを押して入ると `/watch?v=…` になるので、`/live` のパターンには当たらない。
-これを拾うために、次のタイトルのキーワードを足した。
+これはタイトルのキーワード(次の節)や縦長の配信のトグルで拾う。
 
 ## YouTube は配信中のページだけ
 
@@ -109,9 +109,9 @@ URL(`/watch?v=…`)もタブのタイトルも、通常の動画と配信で区�
 - **前の動画の情報が残る対策**: `/watch?v=ID` と `/live/ID` はプレイヤーの `video_id` がその ID になるまで報告しない。
   `/@channel/live` は URL に ID が無いので、遷移(`yt-navigate-start`)から 3 秒は前と同じ動画のままなら報告しない。
   background 側でも `reportMatches` で、報告の URL(と `/watch` なら動画 ID)が今のタブと合うかを確かめる
-- タイトルもプレイヤーのものを使う(末尾の ` - YouTube` や通知件数が付かない)。以前はタブのタイトルを使っていて、
-  「URL が先に変わり、タイトルは 0.5 秒遅れる」「ブラウザの『戻る』では逆にタイトルが先」という順番の問題に
-  `staleTitles`(2 秒の期限付き)で対処していたが、プレイヤーから読むようにして要らなくなった
+- タイトルもプレイヤーのものを使う(末尾の ` - YouTube` や通知件数が付かない)。タブのタイトルは使わない。
+  遷移の仕方によって URL とタイトルのどちらが先に変わるかが入れ替わり(通常は URL が先、ブラウザの「戻る」ではタイトルが先)、
+  前のページのタイトルで判定してしまうため
 
 ### 判定(`resolve`)
 
@@ -126,12 +126,28 @@ URL(`/watch?v=…`)もタブのタイトルも、通常の動画と配信で区�
 
 ## タイトルのキーワード(`keywords`)
 
-縦型配信を拾うために足した(縦型配信のタイトルには `#縦型配信` などが入る)。プリセットごとに `keywords: []` を持つ
-(これより前に作ったプリセットには無いので、常に `p.keywords || []` で読む)。
+縦型配信を拾うためのもの(縦型配信のタイトルには `#縦型配信` などが入る)。プリセットごとに `keywords: []` を持つ
+(項目が無いプリセットもあり得るので、常に `p.keywords || []` で読む)。
 
 - YouTube の配信のタイトルでだけ見る(全ページのタブのタイトルで見ると「縦型」で検索した Google の結果などにも当たる)
 - 部分一致。`foldText`(NFKC + 小文字)で全角半角・大文字小文字をそろえる。正規表現は入れていない
 - キーワードの行頭 `#` はコメント扱いにしない(URL パターンとは逆)
+
+## 縦長の配信(`portrait`)
+
+タイトルに「縦型」が無い縦型配信を拾うためのもの。
+カードの「縦長の配信」トグル。設定ごとにしたのは、キーワードと同じ「候補の1つ」として並び順の仕組みに乗せるため。
+
+- 向きは `#movie_player video` の `videoWidth` / `videoHeight`(`videoHeight > videoWidth` で `portrait`)。
+  実機で 480×854 → 1080×1920 → 720×1280 と画質で変わるが、比率は変わらない
+- `yt-main.js` の報告の `orientation`: `portrait` / `landscape` / `null`(まだ分からない)/ `unknown`(バースト 10 秒が終わっても分からない)。
+  広告中(`#movie_player.ad-showing`)と解像度 0 の間は `null`。`<video>` の `loadedmetadata` / `resize` / `playing` を
+  capture で拾って報告し直すので、広告が終わったあとやバーストの後でも向きが入る
+- `resolve`: 向きが `null`(項目が無い報告も同じ)の間は、`portrait` の設定が URL・タイトルで当たった候補より上にある
+  (または候補が無い)ときだけ `pending`。デフォルトを先に当ててから縦に当て直すのを防ぐ。`unknown` は縦長でない扱い
+- 16:9 の中に縦の映像を置いた配信(ピラーボックス)は横長になる。キーワードで拾う
+- E2E: 縦長の設定(`portrait`)と横型のデフォルトで、`4IzRFBsUsrY`(縦)→ `/@LofiGirl/live`(横)→ 縦、と移り、
+  それぞれ 640×1000 / 1200×700 になり途中で逆を挟まないことを確認。広告が流れる経路は再現できず未確認
 
 ## 優先度(並び順)
 
@@ -140,10 +156,9 @@ URL(`/watch?v=…`)もタブのタイトルも、通常の動画と配信で区�
 
 - URL で当たった候補(`urlCandidates`)と、YouTube の配信のタイトルで当たった候補(`titleCandidates`)のうち、
   **`presets` 配列で前にある(= 設定画面で上にある)方**を `pick` で選ぶ。同じ設定に URL とタイトルの両方で当たったら表示は URL
-- 経緯: 最初は「URL 優先・URL どうしは長いパターン」、次に「YouTube ではタイトルを先に見る」決め打ち、次に数値の `priority`
-  (同点なら URL 優先 → 長い方)と変わり、最後に**カードのドラッグによる並び順**にした。
-  長いパターンを優先する規則はもう無い(チャンネル単位の URL を広い URL に勝たせたいなら上に置く)
-- 数値の `priority` を持つ設定が残っていたら、`migratePriority` が優先度の高い順(同点は元の順)に並べて `priority` を消す。
+- 優先度は**カードのドラッグによる並び順**だけで決まる。長いパターンを優先する規則は無い
+  (チャンネル単位の URL を広い URL に勝たせたいなら上に置く)。縦長の配信(`portrait`)の候補も同じ並び順で比べる
+- 数値の `priority` を持つ設定(古い形式)があれば、`migratePriority` が優先度の高い順(同点は元の順)に並べて `priority` を消す。
   `onInstalled` / `onStartup` で一度だけ走る
 - 新しく登録した設定は末尾(いちばん低い優先度)に入る
 
@@ -154,8 +169,7 @@ URL(`/watch?v=…`)もタブのタイトルも、通常の動画と配信で区�
 - **YouTube の配信中のページで、URL にもキーワードにも当たらなかったときだけ**使う(`resolve` の最後。`by: "default"`)。
   並び順より弱い(デフォルトの設定が上にあっても、下の設定に当たればそちらが勝つ)。YouTube 以外・通常の動画には使わない
 - 1つだけ。設定画面でオンにすると、ほかの設定の `isDefault` を false にして描き直す
-- これで、以前の「横型の設定に `www.youtube.com/watch` と `www.youtube.com/@*/live` を書いて下に置く」運用は要らなくなった
-  (書いてあっても同じ結果になる)
+- 横型の設定に `www.youtube.com/watch` や `www.youtube.com/@*/live` を書いて下に置く必要はない(書いてあっても同じ結果になる)
 
 ### 並べ替えの UI(`options.js`)
 
@@ -171,8 +185,8 @@ URL(`/watch?v=…`)もタブのタイトルも、通常の動画と配信で区�
 設定を当てたら、配信画面の右上に `設定「<名前>」を適用しました` を 4 秒出し、0.3 秒で消す。
 左上に小さく(10px・グレー)アプリ名 `YouTube Window Presets` を入れている。
 見た目は yt-live-helper のお気に入りの配信へ移る前の通知(`fav-watch.js` の `ylh-fav-toast`)に合わせた
-(黒・1px の文字の影・名前はピンク `#ff8fab`)。背景は yt-live-helper の `.35` では文字が見づらかったので `rgba(15,15,15,.6)` に濃くした。位置は右下でなく右上(`right:12px; top:52px`)。
-上端から 8〜44px にはプレイヤーの「i」ボタン(`.ytp-cards-button`)があり、`top:12px` だと重なったので下げた。
+(黒・1px の文字の影・名前はピンク `#ff8fab`)。背景は文字を読みやすくするため、yt-live-helper(`.35`)より濃い `rgba(15,15,15,.75)` にしている。位置は右下でなく右上(`right:12px; top:52px`)。
+上端から 8〜44px にはプレイヤーの「i」ボタン(`.ytp-cards-button`)があるので、重ならないよう `top:52px` にしている。
 
 - background が `applyBounds` のあとに `chrome.tabs.sendMessage(tabId, { type: "applied-toast", name })` を送り、
   `yt-bridge.js`(ISOLATED world)が `#movie_player` の中に出す(全画面でも見える。プレイヤーが無ければ `position:fixed`)。
@@ -209,7 +223,7 @@ E2E は `browser-testing` skill の手順(Playwright + Brave Nightly をバッ�
 実際の YouTube では、縦型配信の設定(キーワード `#縦型配信`)を上、横型の設定(`www.youtube.com/watch`・`www.youtube.com/@*/live`)を下に置き、
 縦型配信 → 通常の動画(関連動画のリンクを `click()`)→ 24 時間配信している横型のチャンネルの `/@…/live`→ ショート(`/shorts` を開くと適当な1本へ飛ぶ)
 → 縦型配信、の順に移って、ウィンドウのサイズを 0.1 秒ごとに見た。縦型配信は縦、通常の動画とショートは何もしない(適用の記録だけ消える)、
-横型の配信は横、になり、途中で逆の設定を挟まないことを確認した。関連動画が配信のこともある(将棋の中継に当たった)ので、
+横型の配信は横、になり、途中で逆の設定を挟まないことを確認した。関連動画が配信のこともあるので、
 移動先が配信だったら「通常の動画」の確認はスキップする。
 並べ替えは Playwright の `locator.dragTo()`(HTML5 のドラッグイベントが飛ぶ)で、つまみで上下に動かせること、
 名前欄からドラッグしても並べ替わらないことを確認した。
@@ -217,7 +231,7 @@ E2E は `browser-testing` skill の手順(Playwright + Brave Nightly をバッ�
 E2E のハマりどころ:
 
 - **起動して約3秒後に、テスト用ブラウザのウィンドウが外から最大化される。** 拡張を空設定にしても起きるので、拡張とは無関係。
-  開いてから 4 秒待ってから検証を始める。これを知らずに、再適用の不具合と取り違えて時間を使った
+  開いてから 4 秒待ってから検証を始める。再適用の不具合と取り違えやすい
 - **Brave はウィンドウの最小幅が 500px を超える**(幅 520 を指定して 536 になった)。テストの幅は 600 以上にする
 - `background-browser.js` の `openPage(url, { width, height })` は `chrome-extension://` のページだと待ちがタイムアウトする。
   拡張のページのスクリーンショットはサイズ指定なしで開く

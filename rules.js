@@ -142,6 +142,15 @@ export function titleCandidates(presets, title) {
   return out;
 }
 
+export function portraitCandidates(presets, orientation) {
+  if (orientation !== "portrait") return [];
+  const out = [];
+  (presets || []).forEach((preset, rank) => {
+    if (preset.portrait) out.push({ preset, by: "portrait", rank });
+  });
+  return out;
+}
+
 export function pick(candidates) {
   let best = null;
   for (const c of candidates) {
@@ -157,7 +166,13 @@ export function resolve(presets, url, report) {
     if (!isYouTubeVideoPage(url)) return { ...NONE, notLive: true };
     if (!reportMatches(report, url)) return { ...NONE, pending: true };
     if (!report.isLive) return { ...NONE, notLive: true };
-    const matched = pickResult([...urlCandidates(presets, url), ...titleCandidates(presets, report.title)]);
+    const known = [...urlCandidates(presets, url), ...titleCandidates(presets, report.title)];
+    if (report.orientation == null) {
+      const best = pick(known);
+      const waiting = (presets || []).some((p, rank) => p.portrait && (!best || rank < best.rank));
+      if (waiting) return { ...NONE, pending: true };
+    }
+    const matched = pickResult([...known, ...portraitCandidates(presets, report.orientation)]);
     if (matched.preset) return matched;
     const fallback = (presets || []).find((p) => p.isDefault);
     return fallback ? { ...NONE, preset: fallback, by: "default" } : NONE;
@@ -188,6 +203,7 @@ export function exportData({ enabled, notify, presets }) {
       urls: p.urls || [],
       keywords: p.keywords || [],
       isDefault: !!p.isDefault,
+      portrait: !!p.portrait,
     })),
   };
 }
@@ -220,6 +236,7 @@ export function importData(data) {
       urls: [...new Set((Array.isArray(p.urls) ? p.urls : []).map(normalizePattern).filter(Boolean))],
       keywords: [...new Set((Array.isArray(p.keywords) ? p.keywords : []).map(normalizeKeyword).filter(Boolean))],
       ...(isDefault ? { isDefault: true } : {}),
+      ...(p.portrait === true ? { portrait: true } : {}),
     });
   }
   return { enabled: data.enabled !== false, notify: data.notify !== false, presets };
